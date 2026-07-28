@@ -1,22 +1,17 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, Easing, staticFile } from "remotion";
 import { Video } from "@remotion/media";
-import {
-  LucideVideo,
-  LucideImage,
-  LucidePresentation,
-} from "lucide-react";
 import { theme } from "./theme";
 import { TopScrim, BottomScrim } from "./components/Scrim";
-import { Chip, IconTile, PopIn } from "./components/Chip";
-import { RemotionGlyph, ClaudeGlyph, PlayPlatformGlyph } from "./components/Brands";
+import { Chip, PopIn } from "./components/Chip";
+import { RemotionGlyph, ClaudeGlyph } from "./components/Brands";
 import { BanyaCutaway } from "./components/BanyaCutaway";
 import { Caption } from "./components/Caption";
 
 // Local system font (Liberation Sans covers Cyrillic) — avoids network font fetches.
 const fontFamily = "'Liberation Sans', 'DejaVu Sans', Arial, sans-serif";
 
-// Beat frame markers (30fps). Text/icon beats are snapped to the natural speech
+// Beat frame markers (30fps). Text beats are snapped to the natural speech
 // pauses detected in the source audio; banya cutaways sit inside those same
 // pauses so the speaker's audio is never interrupted, only the visual cuts away.
 const BEATS = {
@@ -24,32 +19,12 @@ const BEATS = {
   remotionChip: 60,
   claudeChip: 122,
   headerShrinkStart: 184,
-  cutawayA: { start: 204, end: 264 }, // clip1/clip2 pause
+  cutawayA: { start: 204, end: 264 }, // clip1/clip2 pause — fire/stove
   skillCard: 264,
-  cutawayB: { start: 364, end: 424 }, // clip2/clip3 pause
-  iconVideo: 424,
-  iconGraphics: 484,
-  iconYoutube: 544,
-  iconPresentations: 604,
-  cycle1: 640,
-  cutawayC: { start: 700, end: 760 },
-  cycle2: 780,
+  cutawayB: { start: 364, end: 424 }, // clip2/clip3 pause — decorated hall
+  cutawayC: { start: 550, end: 610 }, // clip3/clip4 pause — mirror room
+  cutawayD: { start: 663, end: 723 }, // late pause in clip4 — samovar
 };
-
-const YOUTUBE_RED = "#FF3B30";
-
-const icons: {
-  key: string;
-  label: string;
-  accent: string;
-  at: number;
-  render: (color: string) => React.ReactNode;
-}[] = [
-  { key: "video", label: "Видео", accent: theme.accent, at: BEATS.iconVideo, render: (c) => <LucideVideo size={40} color={c} strokeWidth={2.2} /> },
-  { key: "graphics", label: "Графика", accent: theme.accent2, at: BEATS.iconGraphics, render: (c) => <LucideImage size={40} color={c} strokeWidth={2.2} /> },
-  { key: "youtube", label: "YouTube", accent: YOUTUBE_RED, at: BEATS.iconYoutube, render: (c) => <PlayPlatformGlyph size={40} color={c} /> },
-  { key: "presentations", label: "Презентации", accent: theme.accent3, at: BEATS.iconPresentations, render: (c) => <LucidePresentation size={40} color={c} strokeWidth={2.2} /> },
-];
 
 const cardBase: React.CSSProperties = {
   fontFamily,
@@ -80,18 +55,6 @@ export const IntroComp: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
   );
 
   const skillCardY = spring({ frame: frame - BEATS.skillCard, fps, config: { damping: 16, mass: 0.6 } });
-
-  // pulse cycle highlighting after all 4 icons are shown
-  const cyclePoints = [BEATS.cycle1, BEATS.cycle2];
-  let highlightIndex = -1;
-  for (let i = 0; i < cyclePoints.length; i++) {
-    if (frame >= cyclePoints[i]) highlightIndex = i % icons.length;
-  }
-
-  const gridOpacity = interpolate(frame, [BEATS.iconVideo - 15, BEATS.iconVideo + 10], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
 
   return (
     <AbsoluteFill style={{ background: "#000" }}>
@@ -181,50 +144,7 @@ export const IntroComp: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
         </div>
       </AbsoluteFill>
 
-      {/* Icon grid: video / graphics / youtube / presentations */}
-      <AbsoluteFill
-        style={{
-          ...cardBase,
-          alignItems: "center",
-          justifyContent: "flex-end",
-          paddingBottom: 130,
-          opacity: gridOpacity,
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            rowGap: 26,
-            columnGap: 18,
-          }}
-        >
-          {icons.map((item, i) => {
-            const isActive = highlightIndex === i || (frame - item.at >= 0 && frame - item.at < 40);
-            const local = frame - item.at;
-            const pop = spring({ frame: local, fps, config: { damping: 14, mass: 0.6, stiffness: 170 } });
-            return (
-              <div
-                key={item.key}
-                style={{
-                  opacity: local < 0 ? 0 : interpolate(local, [0, 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
-                  transform: `scale(${local < 0 ? 0.6 : pop})`,
-                }}
-              >
-                <IconTile icon={item.render(isActive ? "#fff" : theme.textDim)} label={item.label} accent={item.accent} active={isActive} />
-              </div>
-            );
-          })}
-        </div>
-      </AbsoluteFill>
-
-      {/* Approximate captions (from the creator's own description — not a word-level transcript) */}
-      <Caption
-        fontFamily={fontFamily}
-        text="Сегодня разбираем, как подключить Remotion для Claude Code"
-        start={20}
-        end={BEATS.headerShrinkStart}
-      />
+      {/* Approximate caption (from the creator's own description — not a word-level transcript) */}
       <Caption
         fontFamily={fontFamily}
         text="Новый скилл — Claude Remotion"
@@ -250,6 +170,12 @@ export const IntroComp: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
         src={staticFile("video/banya-mirror.mp4")}
         start={BEATS.cutawayC.start}
         end={BEATS.cutawayC.end}
+      />
+      <BanyaCutaway
+        fontFamily={fontFamily}
+        src={staticFile("video/banya-samovar.mp4")}
+        start={BEATS.cutawayD.start}
+        end={BEATS.cutawayD.end}
       />
     </AbsoluteFill>
   );
