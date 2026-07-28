@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, Easing } from "remotion";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring, Easing, staticFile } from "remotion";
 import { Video } from "@remotion/media";
 import {
   LucideVideo,
@@ -10,24 +10,30 @@ import { theme } from "./theme";
 import { TopScrim, BottomScrim } from "./components/Scrim";
 import { Chip, IconTile, PopIn } from "./components/Chip";
 import { RemotionGlyph, ClaudeGlyph, PlayPlatformGlyph } from "./components/Brands";
+import { BanyaCutaway } from "./components/BanyaCutaway";
+import { Caption } from "./components/Caption";
 
 // Local system font (Liberation Sans covers Cyrillic) — avoids network font fetches.
 const fontFamily = "'Liberation Sans', 'DejaVu Sans', Arial, sans-serif";
 
-// Beat frame markers (30fps), snapped to natural speech pauses detected in the source audio.
+// Beat frame markers (30fps). Text/icon beats are snapped to the natural speech
+// pauses detected in the source audio; banya cutaways sit inside those same
+// pauses so the speaker's audio is never interrupted, only the visual cuts away.
 const BEATS = {
   kicker: 0,
   remotionChip: 60,
   claudeChip: 122,
-  skillWordStart: 204,
-  skillWordEnd: 300,
-  iconVideo: 380,
-  iconGraphics: 440,
-  iconYoutube: 500,
-  iconPresentations: 560,
-  cycle1: 620,
-  cycle2: 680,
-  outro: 740,
+  headerShrinkStart: 184,
+  cutawayA: { start: 204, end: 264 }, // clip1/clip2 pause
+  skillCard: 264,
+  cutawayB: { start: 364, end: 424 }, // clip2/clip3 pause
+  iconVideo: 424,
+  iconGraphics: 484,
+  iconYoutube: 544,
+  iconPresentations: 604,
+  cycle1: 640,
+  cutawayC: { start: 700, end: 760 },
+  cycle2: 780,
 };
 
 const YOUTUBE_RED = "#FF3B30";
@@ -54,29 +60,29 @@ export const IntroComp: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Header lockup shrinks + moves to corner once icon grid takes over.
-  const headerShrink = interpolate(frame, [BEATS.skillWordStart - 20, BEATS.skillWordStart + 20], [0, 1], {
+  // Header lockup shrinks + moves to corner before the first cutaway.
+  const headerShrink = interpolate(frame, [BEATS.headerShrinkStart, BEATS.cutawayA.start], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.inOut(Easing.ease),
   });
 
-  const kickerOpacity = interpolate(frame, [BEATS.kicker, BEATS.kicker + 15, BEATS.skillWordStart - 10, BEATS.skillWordStart + 15], [0, 1, 1, 0], {
+  const kickerOpacity = interpolate(frame, [BEATS.kicker, BEATS.kicker + 15, BEATS.headerShrinkStart - 6, BEATS.headerShrinkStart + 14], [0, 1, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   const skillCardOpacity = interpolate(
     frame,
-    [BEATS.skillWordStart, BEATS.skillWordStart + 15, BEATS.iconVideo - 20, BEATS.iconVideo + 10],
+    [BEATS.skillCard, BEATS.skillCard + 15, BEATS.cutawayB.start - 10, BEATS.cutawayB.start],
     [0, 1, 1, 0],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
 
-  const skillCardY = spring({ frame: frame - BEATS.skillWordStart, fps, config: { damping: 16, mass: 0.6 } });
+  const skillCardY = spring({ frame: frame - BEATS.skillCard, fps, config: { damping: 16, mass: 0.6 } });
 
   // pulse cycle highlighting after all 4 icons are shown
-  const cyclePoints = [BEATS.cycle1, BEATS.cycle2, BEATS.outro];
+  const cyclePoints = [BEATS.cycle1, BEATS.cycle2];
   let highlightIndex = -1;
   for (let i = 0; i < cyclePoints.length; i++) {
     if (frame >= cyclePoints[i]) highlightIndex = i % icons.length;
@@ -120,7 +126,7 @@ export const IntroComp: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
         </PopIn>
       </AbsoluteFill>
 
-      {/* Remotion + Claude Code lockup */}
+      {/* Remotion + Claude Code lockup (persists, shrunk, through the whole video) */}
       <AbsoluteFill
         style={{
           ...cardBase,
@@ -212,6 +218,39 @@ export const IntroComp: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
         </div>
       </AbsoluteFill>
 
+      {/* Approximate captions (from the creator's own description — not a word-level transcript) */}
+      <Caption
+        fontFamily={fontFamily}
+        text="Сегодня разбираем, как подключить Remotion для Claude Code"
+        start={20}
+        end={BEATS.headerShrinkStart}
+      />
+      <Caption
+        fontFamily={fontFamily}
+        text="Новый скилл — Claude Remotion"
+        start={BEATS.skillCard + 10}
+        end={BEATS.cutawayB.start - 10}
+      />
+
+      {/* Banya B-roll cutaways — voice audio from the talking-head clip keeps playing underneath */}
+      <BanyaCutaway
+        fontFamily={fontFamily}
+        src={staticFile("video/banya-fire.mp4")}
+        start={BEATS.cutawayA.start}
+        end={BEATS.cutawayA.end}
+      />
+      <BanyaCutaway
+        fontFamily={fontFamily}
+        src={staticFile("video/banya-hall.mp4")}
+        start={BEATS.cutawayB.start}
+        end={BEATS.cutawayB.end}
+      />
+      <BanyaCutaway
+        fontFamily={fontFamily}
+        src={staticFile("video/banya-mirror.mp4")}
+        start={BEATS.cutawayC.start}
+        end={BEATS.cutawayC.end}
+      />
     </AbsoluteFill>
   );
 };
