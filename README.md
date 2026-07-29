@@ -7,6 +7,51 @@ speech pauses in the audio (detected via `ffmpeg silencedetect`, no live
 transcript — see commit message for details). Render with `npx remotion
 render Intro out/intro-final.mp4`.
 
+## VerticalReel
+
+Premium 1080×1920 @30fps beat-cut Reels/TikTok edit (`VerticalReel`
+composition) built from a single continuous ~73s handheld walkthrough of the
+Берлога bathhouse (`public/video/source.mp4`, re-encoded to constant 30fps
+from the original ~29.26fps VFR source for frame-accurate trimming).
+
+- `src/edit/editPlan.ts` — the cut list: which source ranges become which
+  scenes, at what speed (including two short slow-mo "punch" moments and two
+  sped-up connective sections), which transition cuts into each scene, and
+  the authored caption copy.
+- `src/edit/timeline.ts` — compiles that plan into frame offsets, mirroring
+  how `<TransitionSeries>` overlaps consecutive scenes by each transition's
+  duration.
+- `src/VerticalReel.tsx` — assembles the `<TransitionSeries>` of scenes +
+  CTA, a separate non-overlapping audio track (see below), ambient bed,
+  grain/vignette, progress bar and scene timecode.
+- `src/components/transitions/` — hand-rolled `whipPan` / `punchZoom` /
+  `lightLeak` transition presentations. `@remotion/transitions`' canvas-shader
+  presentations (`zoomBlur`, `linearBlur`, `filmBurn`, ...) need an
+  experimental "HTML in Canvas" Chrome feature not available in this
+  environment's headless Chromium, so those three editorial looks are
+  reimplemented in plain CSS transform/filter instead. `pushCut` and `fade`
+  are the library's (confirmed CSS-only) presentations.
+- `src/components/AudioTrack.tsx` — the narration is laid out as a *separate*
+  flat, non-overlapping `<Sequence>` stack (not the muted `<Video>` used for
+  the picture) that hard-cuts exactly where the visual crossfade begins.
+  Reusing the picture's audio directly would mean two adjacent scenes —
+  literally consecutive seconds of the same recording — play simultaneously
+  during every crossfade, which sounds like the narrator's voice stuttering
+  on itself.
+- Fonts: Montserrat is self-hosted from `public/fonts/` (downloaded ahead of
+  time) and loaded via `@remotion/fonts`' `loadFont()` against a same-origin
+  `staticFile()` URL (`src/fonts.ts`) rather than `@remotion/google-fonts`,
+  because this environment's headless Chromium doesn't trust the outbound
+  proxy's TLS certificate for arbitrary external hosts.
+- Whisper transcription (`@remotion/install-whisper-cpp`) was attempted for
+  word-accurate captions but the model download (huggingface.co) is blocked
+  by this environment's network egress policy. Captions are therefore short
+  authored Russian marketing copy synced to real beat timing (`ffmpeg
+  silencedetect` on the source audio), not a verbatim transcript.
+
+Render with `npx remotion render VerticalReel out/berloga-vertical-reel.mp4
+--crf=16`.
+
 
 <p align="center">
   <a href="https://github.com/remotion-dev/logo">
